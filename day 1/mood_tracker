@@ -1,0 +1,183 @@
+# Mood Tracker Analysis
+# This script creates a sample mood tracker and analyzes the data
+
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+def create_mood_tracker():
+    """Create a sample mood tracker DataFrame with 30 days of data"""
+    # Set random seed for reproducible results
+    np.random.seed(42)
+
+    # Create date range for the past 30 days
+    dates = [datetime.today() - timedelta(days=i) for i in range(30)]
+    dates.reverse()  # Put in chronological order
+
+    # Define possible moods and emotion words
+    moods = ['Happy', 'Sad', 'Anxious', 'Energetic', 'Calm', 'Frustrated', 'Tired']
+    emotion_words = {
+        'Happy': ['Joyful', 'Content', 'Excited', 'Grateful', 'Optimistic'],
+        'Sad': ['Down', 'Lonely', 'Disappointed', 'Hopeless', 'Melancholy'],
+        'Anxious': ['Nervous', 'Worried', 'Stressed', 'Overwhelmed', 'Panicked'],
+        'Energetic': ['Motivated', 'Productive', 'Active', 'Vibrant', 'Dynamic'],
+        'Calm': ['Peaceful', 'Relaxed', 'Serene', 'Tranquil', 'Balanced'],
+        'Frustrated': ['Annoyed', 'Irritated', 'Impatient', 'Aggravated', 'Stuck'],
+        'Tired': ['Exhausted', 'Drained', 'Fatigued', 'Weary', 'Burnt out']
+    }
+
+    # Generate sample data
+    data = []
+    for date in dates:
+        mood = np.random.choice(moods)
+        emotion_word = np.random.choice(emotion_words[mood])
+        energy_level = np.random.randint(1, 11)  # 1-10 scale
+        notes = f"Sample notes for {date.strftime('%Y-%m-%d')}"
+        
+        data.append({
+            'Date': date,
+            'Mood': mood,
+            'Emotion_Word': emotion_word,
+            'Energy_Level': energy_level,
+            'Notes': notes
+        })
+
+    # Create DataFrame
+    mood_tracker = pd.DataFrame(data)
+    return mood_tracker
+
+def analyze_mood_tracker(mood_tracker):
+    """Analyze the mood tracker data and print insights"""
+    
+    print("=" * 60)
+    print("MOOD TRACKER ANALYSIS")
+    print("=" * 60)
+    
+    # Display the first few rows
+    print("\nMood Tracker Table (first 10 entries):")
+    print("=" * 40)
+    print(mood_tracker.head(10))
+    
+    # 1. Find the most common mood
+    most_common_mood = mood_tracker['Mood'].value_counts().idxmax()
+    mood_counts = mood_tracker['Mood'].value_counts()
+
+    print("\n\n1. MOST COMMON MOOD ANALYSIS:")
+    print("=" * 40)
+    print(f"Most common mood: {most_common_mood}")
+    print("\nCount of each mood:")
+    print(mood_counts)
+
+    # Visual representation
+    print("\nVisual representation:")
+    for mood, count in mood_counts.items():
+        bar = "█" * count
+        print(f"{mood:12}: {bar} ({count})")
+
+    # 2. Calculate average energy per week
+    mood_tracker['Week'] = mood_tracker['Date'].dt.isocalendar().week
+    weekly_energy = mood_tracker.groupby('Week')['Energy_Level'].mean()
+
+    print("\n\n2. AVERAGE ENERGY PER WEEK:")
+    print("=" * 40)
+    for week, energy in weekly_energy.items():
+        print(f"Week {week}: {energy:.2f}/10")
+
+    # Add a simple visualization
+    print("\nEnergy level chart (1-10 scale):")
+    for week, energy in weekly_energy.items():
+        bars = "█" * int(energy)
+        print(f"Week {week}: {bars} ({energy:.1f}/10)")
+
+    # 3. Filter days with "low energy" + "sad" (feedback loop trigger days)
+    low_energy_threshold = 4  # Define what "low energy" means
+    sad_low_energy_days = mood_tracker[
+        (mood_tracker['Energy_Level'] <= low_energy_threshold) & 
+        (mood_tracker['Mood'] == 'Sad')
+    ]
+
+    print("\n\n3. FEEDBACK LOOP TRIGGER DAYS:")
+    print("=" * 40)
+    print(f"Days with low energy (≤{low_energy_threshold}) and sad mood:")
+    if len(sad_low_energy_days) > 0:
+        for _, row in sad_low_energy_days.iterrows():
+            print(f"- {row['Date'].strftime('%Y-%m-%d')}: Energy={row['Energy_Level']}, Emotion={row['Emotion_Word']}")
+    else:
+        print("No days match this criteria - that's great!")
+
+    # 4. Additional analysis: Mood distribution by day of week
+    mood_tracker['Day_Of_Week'] = mood_tracker['Date'].dt.day_name()
+    mood_by_day = mood_tracker.groupby('Day_Of_Week')['Mood'].value_counts().unstack(fill_value=0)
+
+    print("\n\n4. MOOD BY DAY OF WEEK:")
+    print("=" * 40)
+    print(mood_by_day)
+
+    # 5. Energy level by mood
+    energy_by_mood = mood_tracker.groupby('Mood')['Energy_Level'].agg(['mean', 'count'])
+    print("\n\n5. ENERGY LEVEL BY MOOD:")
+    print("=" * 40)
+    print(energy_by_mood)
+
+    # 6. Create a comprehensive summary report
+    print("\n\n" + "=" * 60)
+    print("MOOD TRACKER SUMMARY REPORT")
+    print("=" * 60)
+
+    print(f"\nTracking Period: {mood_tracker['Date'].min().strftime('%Y-%m-%d')} to {mood_tracker['Date'].max().strftime('%Y-%m-%d')}")
+    print(f"Total entries: {len(mood_tracker)}")
+
+    print(f"\nMost common mood: {most_common_mood} ({mood_counts[most_common_mood]} days)")
+    print(f"Average energy level: {mood_tracker['Energy_Level'].mean():.2f}/10")
+
+    if len(sad_low_energy_days) > 0:
+        print(f"\n⚠️  Alert: {len(sad_low_energy_days)} potential feedback loop days detected")
+        print("These are days with low energy combined with sad mood, which might need attention:")
+        for _, row in sad_low_energy_days.iterrows():
+            print(f"  - {row['Date'].strftime('%Y-%m-%d')} ({row['Emotion_Word']})")
+    else:
+        print(f"\n✅ No feedback loop days detected - great job managing your mood!")
+
+    # Find the highest energy mood
+    highest_energy_mood = energy_by_mood['mean'].idxmax()
+    print(f"\nYour highest energy mood is: {highest_energy_mood} ({energy_by_mood.loc[highest_energy_mood, 'mean']:.2f}/10)")
+
+    # Find the lowest energy mood
+    lowest_energy_mood = energy_by_mood['mean'].idxmin()
+    print(f"Your lowest energy mood is: {lowest_energy_mood} ({energy_by_mood.loc[lowest_energy_mood, 'mean']:.2f}/10)")
+    
+    return mood_tracker
+
+def save_mood_tracker(mood_tracker, filename="mood_tracker_analysis.txt"):
+    """Save the mood tracker analysis to a file"""
+    with open(filename, 'w') as f:
+        # Redirect print statements to file
+        import sys
+        original_stdout = sys.stdout
+        sys.stdout = f
+        
+        # Run the analysis again to capture all output
+        analyze_mood_tracker(mood_tracker)
+        
+        # Restore stdout
+        sys.stdout = original_stdout
+    
+    print(f"\nAnalysis saved to {filename}")
+
+# Main execution
+if __name__ == "__main__":
+    print("Creating mood tracker data...")
+    mood_tracker = create_mood_tracker()
+    
+    print("Analyzing mood tracker data...")
+    analyze_mood_tracker(mood_tracker)
+    
+    # Ask if user wants to save results
+    save_response = input("\nWould you like to save these results to a file? (y/n): ")
+    if save_response.lower() == 'y':
+        filename = input("Enter filename (or press Enter for 'mood_tracker_analysis.txt'): ")
+        if not filename:
+            filename = "mood_tracker_analysis.txt"
+        save_mood_tracker(mood_tracker, filename)
+    
+    print("\nAnalysis complete!")
